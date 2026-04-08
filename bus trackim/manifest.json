@@ -1,0 +1,56 @@
+{
+  "name": "RideSync – Live Bus Tracking",
+  "short_name": "RideSync",
+  "description": "Track government buses in real time. Find routes, stops, and live ETAs. Works offline.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F6FA",
+  "theme_color": "#007BFF",
+  "lang": "en-IN",
+  "scope": "./",
+  "categories": ["travel", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%23007BFF'/><text y='140' x='96' font-size='120' text-anchor='middle'>🚌</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%23007BFF'/><text y='370' x='256' font-size='320' text-anchor='middle'>🚌</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Track Bus 101",
+      "short_name": "Bus 101",
+      "description": "Track Bus 101 (Borivali ↔ Churchgate) live",
+      "url": "./index.html#bus=101",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='16' fill='%23007BFF'/><text y='68' x='48' font-size='60' text-anchor='middle'>🚌</text></svg>",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Search a Stop",
+      "short_name": "Find Stop",
+      "description": "Search for a bus stop near you",
+      "url": "./index.html#home",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect width='96' height='96' rx='16' fill='%2328A745'/><text y='68' x='48' font-size='60' text-anchor='middle'>📍</text></svg>",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

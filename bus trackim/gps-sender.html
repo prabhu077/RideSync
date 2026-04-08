@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Sender – Bus Tracker Test Tool</title>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        body {
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .status-pill.running {
+            background: #D4EDDA;
+            color: #155724;
+        }
+
+        .status-pill.stopped {
+            background: #F8D7DA;
+            color: #721C24;
+        }
+
+        .coord-display {
+            font-family: monospace;
+            font-size: .9rem;
+            background: #1A1A2E;
+            color: #7EE8A2;
+            padding: 14px;
+            border-radius: 10px;
+            margin: 8px 0;
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #28A745;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .2;
+            }
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        input[type=range] {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div
+        style="background:linear-gradient(135deg,#007BFF,#0056B3);color:#fff;border-radius:16px;padding:24px 20px;margin-bottom:20px">
+        <div style="font-size:1.6rem">🛰️</div>
+        <h1 style="color:#fff;font-size:1.3rem;margin:6px 0">GPS Sender – Test Tool</h1>
+        <p style="opacity:.85;font-size:.88rem">Simulates a bus device sending GPS to Firebase Realtime DB. Use for
+            testing live tracking.</p>
+    </div>
+
+    <!-- Status -->
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <div style="font-weight:600">Status</div>
+        <div id="status-pill" class="status-pill stopped">⏹ Stopped</div>
+    </div>
+
+    <!-- Config -->
+    <div class="card">
+        <div class="section-title">Bus Configuration</div>
+
+        <div class="info-row">
+            <label for="bus-select" class="info-label">Select Bus</label>
+            <select id="bus-select"
+                style="border:2px solid #DEE2E6;border-radius:8px;padding:8px 12px;font-size:1rem;font-family:inherit">
+                <option value="101-A">Bus 101-A (Route 101)</option>
+                <option value="101-B">Bus 101-B (Route 101)</option>
+                <option value="202-A">Bus 202-A (Route 202)</option>
+                <option value="303-A">Bus 303-A (Route 303)</option>
+            </select>
+        </div>
+
+        <div class="info-row">
+            <span class="info-label">GPS Source</span>
+            <div style="display:flex;gap:8px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:.9rem">
+                    <input type="radio" name="gps-src" value="browser" id="gps-browser" checked> Browser GPS
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.9rem">
+                    <input type="radio" name="gps-src" value="manual" id="gps-manual"> Manual
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.9rem">
+                    <input type="radio" name="gps-src" value="simulate" id="gps-simulate"> Simulate
+                </label>
+            </div>
+        </div>
+
+        <div class="info-row">
+            <span class="info-label">Interval</span>
+            <div class="slider-row" style="flex:1;max-width:220px">
+                <input type="range" id="interval-slider" min="5" max="60" value="15" step="5">
+                <span id="interval-val" style="font-weight:600;color:#007BFF;min-width:40px">15s</span>
+            </div>
+        </div>
+
+        <!-- Manual coords (shown when manual selected) -->
+        <div id="manual-coords" style="display:none">
+            <div class="info-row">
+                <label class="info-label">Latitude</label>
+                <input type="number" id="manual-lat" value="19.0760" step="0.0001"
+                    style="border:2px solid #DEE2E6;border-radius:8px;padding:8px;font-size:1rem;width:150px">
+            </div>
+            <div class="info-row">
+                <label class="info-label">Longitude</label>
+                <input type="number" id="manual-lng" value="72.8777" step="0.0001"
+                    style="border:2px solid #DEE2E6;border-radius:8px;padding:8px;font-size:1rem;width:150px">
+            </div>
+            <div class="info-row">
+                <label class="info-label">Heading (°)</label>
+                <input type="number" id="manual-heading" value="180" min="0" max="360"
+                    style="border:2px solid #DEE2E6;border-radius:8px;padding:8px;font-size:1rem;width:100px">
+            </div>
+            <div class="info-row">
+                <label class="info-label">Speed (km/h)</label>
+                <input type="number" id="manual-speed" value="25" min="0" max="80"
+                    style="border:2px solid #DEE2E6;border-radius:8px;padding:8px;font-size:1rem;width:100px">
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="btn-row" style="margin-bottom:16px">
+        <button class="btn btn-green" id="start-btn" onclick="startSending()">▶ Start Sending</button>
+        <button class="btn btn-outline" id="stop-btn" onclick="stopSending()" disabled>⏹ Stop</button>
+    </div>
+
+    <!-- Last sent -->
+    <div class="card">
+        <div class="section-title">Last GPS Sent</div>
+        <div class="coord-display" id="coord-display">
+            Waiting to start…
+        </div>
+        <div class="info-row">
+            <span class="info-label">Updates sent</span>
+            <span class="info-val" id="send-count">0</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Last update</span>
+            <span class="info-val" id="last-update">—</span>
+        </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+        <div class="section-title" style="cursor:pointer"
+            onclick="document.getElementById('gps-log').style.display=document.getElementById('gps-log').style.display==='none'?'block':'none'">
+            Log (tap to toggle)
+        </div>
+        <div class="log-box" id="gps-log" style="height:160px"></div>
+    </div>
+
+    <div class="card" style="background:var(--blue-light)">
+        <b>💡 How to use:</b><br>
+        <ol style="font-size:.88rem;line-height:1.9;padding-left:18px;color:#5A6A7A;margin-top:6px">
+            <li>Open <a href="index.html" style="color:#007BFF">index.html</a> in another tab → go to Bus page</li>
+            <li>In this tab: select a bus, choose GPS source, click Start</li>
+            <li>The bus icon will move on the map every 15s</li>
+            <li>Use "Simulate" to auto-move along the route without GPS</li>
+        </ol>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script>
+        "use strict";
+
+        let sendTimer = null;
+        let sendCount = 0;
+        let gpsWatchId = null;
+        let simStopIdx = 0;
+        let simProgress = 0;
+        let currentPos = null; // { lat, lng, heading, speed }
+
+        // UI refs
+        const statusPill = document.getElementById("status-pill");
+        const coordDisplay = document.getElementById("coord-display");
+        const startBtn = document.getElementById("start-btn");
+        const stopBtn = document.getElementById("stop-btn");
+        const sendCountEl = document.getElementById("send-count");
+        const lastUpdateEl = document.getElementById("last-update");
+        const logEl = document.getElementById("gps-log");
+        const intervalSlider = document.getElementById("interval-slider");
+        const intervalVal = document.getElementById("interval-val");
+
+        // GPS source radio toggle
+        document.querySelectorAll("input[name='gps-src']").forEach(r => {
+            r.addEventListener("change", () => {
+                document.getElementById("manual-coords").style.display =
+                    document.getElementById("gps-manual").checked ? "block" : "none";
+            });
+        });
+
+        // Interval slider label
+        intervalSlider.addEventListener("input", () => {
+            intervalVal.textContent = `${intervalSlider.value}s`;
+        });
+
+        function addLog(msg) {
+            const line = document.createElement("div");
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function sendGPS(busId, lat, lng, heading, speed) {
+            const payload = {
+                lat, lng, heading, speed,
+                timestamp: Date.now(),
+                routeId: getBusRoute(busId),
+                nextStop: getNextStop(busId),
+                currentStopIndex: simStopIdx
+            };
+
+            // Try Firebase
+            if (typeof initFirebase === "function") { initFirebase(); }
+            if (typeof rtdb !== "undefined" && rtdb) {
+                try {
+                    await rtdb.ref(`buses/${busId}`).set(payload);
+                    addLog(`✓ ${busId} → (${lat.toFixed(5)}, ${lng.toFixed(5)}) hdg:${Math.round(heading)}° spd:${Math.round(speed)}km/h`);
+                } catch (e) {
+                    addLog(`✗ Firebase error: ${e.message}`);
+                }
+            } else {
+                addLog(`⚠ Firebase not ready – GPS not sent (check firebase-config.js)`);
+            }
+
+            // Update UI
+            sendCount++;
+            sendCountEl.textContent = sendCount;
+            lastUpdateEl.textContent = new Date().toLocaleTimeString();
+            coordDisplay.textContent = `Bus: ${busId}\nLat: ${lat.toFixed(6)}\nLng: ${lng.toFixed(6)}\nHeading: ${Math.round(heading)}°\nSpeed: ${Math.round(speed)} km/h`;
+        }
+
+        function getBusRoute(busId) {
+            const map = { "101-A": "R101", "101-B": "R101", "202-A": "R202", "303-A": "R303" };
+            return map[busId] || "R101";
+        }
+
+        function getNextStop(busId) {
+            const stops = {
+                "R101": ["STOP001", "STOP002", "STOP003", "STOP004", "STOP005", "STOP006", "STOP007", "STOP008", "STOP009", "STOP010"],
+                "R202": ["STOP021", "STOP022", "STOP023", "STOP024", "STOP025"],
+                "R303": ["STOP036", "STOP037", "STOP038", "STOP039", "STOP040"]
+            };
+            const routeId = getBusRoute(busId);
+            const arr = stops[routeId] || [];
+            return arr[Math.min(simStopIdx + 1, arr.length - 1)] || arr[0];
+        }
+
+        async function startSending() {
+            const busId = document.getElementById("bus-select").value;
+            const src = document.querySelector("input[name='gps-src']:checked").value;
+            const interval = parseInt(intervalSlider.value) * 1000;
+
+            // Validate
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusPill.className = "status-pill running";
+            statusPill.innerHTML = '<div class="pulse-dot"></div> Sending…';
+            sendCount = 0;
+            addLog(`▶ Started – Bus: ${busId}, Source: ${src}, Interval: ${intervalSlider.value}s`);
+
+            async function doSend() {
+                if (src === "browser") {
+                    if (!navigator.geolocation) { addLog("✗ Geolocation not supported"); return; }
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        const { latitude: lat, longitude: lng, speed, heading } = pos.coords;
+                        sendGPS(busId, lat, lng, heading || 180, (speed || 0) * 3.6 || 25);
+                    }, err => addLog(`✗ GPS error: ${err.message}`), { enableHighAccuracy: true });
+
+                } else if (src === "manual") {
+                    const lat = parseFloat(document.getElementById("manual-lat").value);
+                    const lng = parseFloat(document.getElementById("manual-lng").value);
+                    const heading = parseFloat(document.getElementById("manual-heading").value);
+                    const speed = parseFloat(document.getElementById("manual-speed").value);
+                    sendGPS(busId, lat, lng, heading, speed);
+
+                } else {
+                    // Simulate along route
+                    simulateStep(busId);
+                }
+            }
+
+            doSend(); // Send immediately
+            sendTimer = setInterval(doSend, interval);
+        }
+
+        function simulateStep(busId) {
+            // Simple lat/lng interpolation along a path
+            const paths = {
+                "101-A": [[19.2307, 72.8567], [19.2068, 72.8478], [19.1872, 72.8489], [19.1621, 72.8494], [19.1373, 72.8494], [19.1197, 72.8464], [19.0991, 72.8449], [19.0830, 72.8446], [19.0728, 72.8395], [19.0564, 72.8393]],
+                "101-B": [[19.0437, 72.8448], [19.0210, 72.8426], [19.0103, 72.8306], [18.9994, 72.8198], [18.9826, 72.8087], [18.9765, 72.8091], [18.9690, 72.8202], [18.9640, 72.8200], [18.9425, 72.8237], [18.9353, 72.8264]],
+                "202-A": [[19.1196, 72.8479], [19.1070, 72.8609], [19.0990, 72.8676], [19.0726, 72.8789], [19.0625, 72.8997], [19.0866, 72.9083], [19.0395, 72.8647], [19.0370, 72.8542], [19.0269, 72.8635], [19.0241, 72.8498]],
+                "303-A": [[19.0542, 72.8410], [19.0503, 72.8237], [19.0551, 72.8345], [18.9620, 72.8155], [18.9531, 72.8196], [18.9441, 72.8236], [18.9290, 72.8235], [18.9226, 72.8204], [18.9097, 72.8234], [18.9067, 72.8314]]
+            };
+
+            const path = paths[busId] || paths["101-A"];
+            simProgress += 0.1;
+            if (simProgress >= 1) { simProgress = 0; simStopIdx = (simStopIdx + 1) % (path.length - 1); }
+
+            const from = path[simStopIdx];
+            const to = path[(simStopIdx + 1) % path.length];
+            const lat = from[0] + (to[0] - from[0]) * simProgress;
+            const lng = from[1] + (to[1] - from[1]) * simProgress;
+
+            // Approximate bearing
+            const dLng = (to[1] - from[1]) * Math.PI / 180;
+            const y = Math.sin(dLng) * Math.cos(to[0] * Math.PI / 180);
+            const x = Math.cos(from[0] * Math.PI / 180) * Math.sin(to[0] * Math.PI / 180) -
+                Math.sin(from[0] * Math.PI / 180) * Math.cos(to[0] * Math.PI / 180) * Math.cos(dLng);
+            const heading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+            const speed = 20 + Math.random() * 15;
+
+            sendGPS(busId, lat, lng, heading, speed);
+        }
+
+        function stopSending() {
+            clearInterval(sendTimer);
+            clearTimeout(sendTimer);
+            if (gpsWatchId) { navigator.geolocation?.clearWatch(gpsWatchId); gpsWatchId = null; }
+
+            statusPill.className = "status-pill stopped";
+            statusPill.textContent = "⏹ Stopped";
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            addLog("⏹ Stopped.");
+        }
+    </script>
+</body>
+
+</html>

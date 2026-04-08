@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin – Seed Firebase Data | RideSync</title>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        body {
+            padding: 20px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin: 20px 0 4px;
+            font-size: 1.4rem;
+            color: #007BFF;
+        }
+
+        .admin-header {
+            background: linear-gradient(135deg, #007BFF, #0056B3);
+            color: #fff;
+            padding: 24px 20px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .admin-header p {
+            opacity: .85;
+            font-size: .9rem;
+            margin-top: 4px;
+        }
+
+        .data-preview {
+            font-size: .82rem;
+            color: #5A6A7A;
+        }
+
+        pre {
+            background: #1A1A2E;
+            color: #7EE8A2;
+            padding: 12px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: .78rem;
+            margin: 8px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="admin-header">
+        <div style="font-size:1.6rem;margin-bottom:6px">🔧 Admin Panel</div>
+        <h1 style="color:#fff;margin:0;font-size:1.3rem">Firebase Data Seeder</h1>
+        <p>Seeds Firestore with Mumbai bus routes, stops & schedules. Run once per Firebase project.</p>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-icon">⚠️</div>
+            <div>
+                <h3>Before you start</h3>
+                <div class="text-muted" style="font-size:.85rem">Make sure Firebase is configured in firebase-config.js
+                </div>
+            </div>
+        </div>
+        <ol style="font-size:.9rem;line-height:2;color:#5A6A7A;padding-left:20px">
+            <li>Edit <code>firebase-config.js</code> with your real Firebase credentials</li>
+            <li>Enable Firestore and Realtime DB in your Firebase project</li>
+            <li>Set Firestore rules to allow writes (dev mode)</li>
+            <li>Click "Seed All Data" below</li>
+        </ol>
+        <pre>{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+        <p class="text-muted" style="font-size:.82rem">⚠️ Switch to authenticated rules before going to production!</p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Data to be seeded</div>
+        <div class="info-row">
+            <span class="info-label">Routes</span>
+            <span class="info-val">3 (101, 202, 303)</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Stops</span>
+            <span class="info-val">47 (Mumbai locations)</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Schedules</span>
+            <span class="info-val">5am – 11pm daily</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Demo Buses</span>
+            <span class="info-val">4 (with GPS positions)</span>
+        </div>
+    </div>
+
+    <div class="btn-row" style="margin-bottom:16px">
+        <button class="btn btn-primary" id="seed-btn" onclick="seedAllData()">🌱 Seed All Data</button>
+        <button class="btn btn-outline" onclick="clearLog()">🗑️ Clear Log</button>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Log</div>
+        <div class="log-box" id="log">
+            <span style="color:#5A6A7A">Waiting to start… Click "Seed All Data" above.</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:8px">
+        <div class="section-title">Firestore Structure</div>
+        <pre>routes/{routeId}
+  name, shortName, color, stops[], schedule[], days
+
+stops/{stopId}
+  name, lat, lng, routes[]
+
+buses/{busId}      ← Realtime DB
+  lat, lng, heading, speed, timestamp, routeId, nextStop</pre>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="./firebase-config.js"></script>
+    <script>
+        "use strict";
+
+        const logEl = document.getElementById("log");
+        const seedBtn = document.getElementById("seed-btn");
+
+        function log(msg, type = "info") {
+            const line = document.createElement("div");
+            line.className = type === "error" ? "log-error" : type === "warn" ? "log-warn" : "";
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function clearLog() {
+            logEl.innerHTML = "";
+        }
+
+        async function seedAllData() {
+            seedBtn.disabled = true;
+            seedBtn.textContent = "⏳ Seeding…";
+            logEl.innerHTML = "";
+
+            // Init Firebase
+            const ok = initFirebase();
+            if (!ok || !db) {
+                log("❌ Firebase not ready. Check firebase-config.js", "error");
+                seedBtn.disabled = false; seedBtn.textContent = "🌱 Seed All Data";
+                return;
+            }
+
+            log("✅ Firebase connected");
+
+            try {
+                // ── Seed Routes ─────────────────────────────────────────
+                log("📝 Seeding routes…");
+                for (const [id, route] of Object.entries(DEMO_DATA.routes)) {
+                    await db.collection("routes").doc(id).set({
+                        name: route.name,
+                        shortName: route.shortName,
+                        color: route.color,
+                        stops: route.stops,
+                        schedule: route.schedule,
+                        days: route.days
+                    });
+                    log(`  ✓ Route ${route.shortName}: ${route.name}`);
+                }
+
+                // ── Seed Stops ──────────────────────────────────────────
+                log("📍 Seeding stops…");
+                const batch = db.batch();
+                let count = 0;
+                for (const [id, stop] of Object.entries(DEMO_DATA.stops)) {
+                    const ref = db.collection("stops").doc(id);
+                    batch.set(ref, {
+                        name: stop.name,
+                        lat: stop.lat,
+                        lng: stop.lng,
+                        routes: stop.routes
+                    });
+                    count++;
+                    if (count % 10 === 0) {
+                        await batch.commit();
+                        log(`  ✓ Committed ${count} stops`);
+                    }
+                }
+                await batch.commit();
+                log(`  ✓ Total ${count} stops seeded`);
+
+                // ── Seed Bus GPS (Realtime DB) ──────────────────────────
+                log("🚌 Seeding bus GPS positions to Realtime DB…");
+                if (rtdb) {
+                    for (const [busId, bus] of Object.entries(DEMO_DATA.buses)) {
+                        await rtdb.ref(`buses/${busId}`).set({
+                            lat: bus.lat,
+                            lng: bus.lng,
+                            heading: bus.heading,
+                            speed: bus.speed,
+                            timestamp: Date.now(),
+                            routeId: bus.routeId,
+                            nextStop: bus.nextStop,
+                            currentStopIndex: bus.currentStopIndex
+                        });
+                        log(`  ✓ Bus ${busId} GPS set`);
+                    }
+                } else {
+                    log("  ⚠ Realtime DB not available – skipping bus GPS", "warn");
+                }
+
+                log("🎉 All data seeded successfully! You can now open index.html", "info");
+                seedBtn.textContent = "✅ Done!";
+
+            } catch (err) {
+                log(`❌ Error: ${err.message}`, "error");
+                console.error(err);
+                seedBtn.textContent = "🌱 Retry";
+                seedBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
